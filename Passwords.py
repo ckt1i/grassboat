@@ -1,11 +1,13 @@
 import csv
-from Passwords import *
 import math
 
-
 class Password:
-    def __init__(self, password = "",  words=[] , pattern = [] , count = 0):
-        self.password = password 
+    def __init__(self, password="", words=None, pattern=None, count=0):
+        if words is None:
+            words = {}
+        if pattern is None:
+            pattern = []
+        self.password = password
         self.words = words
         self.pattern = pattern
         self.count = count
@@ -44,7 +46,6 @@ class Password:
         return previous_row[-1]
 
     def calculate_edit_char(self):
-        
         password = self.password
         words = self.words
         patterns = self.pattern
@@ -53,16 +54,15 @@ class Password:
         editing_num = 0
 
         for word in words:
-            while(patterns[item_index][0] != "w"):
-                word_index += patterns[item_index][1]
+            while patterns.pattern[item_index][0] != "w":
+                word_index += patterns.pattern[item_index][1]
                 item_index += 1
             
-            editing_num += self.levenshtein_distance(password[word_index:word_index+len(word)] , word)
-            word_index += patterns[item_index][1]
+            editing_num += self.levenshtein_distance(password[word_index:word_index+len(word)], word)
+            word_index += patterns.pattern[item_index][1]
             item_index += 1
 
         return editing_num
-
 
     def calculate_pwd_space(self):
         type_num = 10
@@ -70,47 +70,57 @@ class Password:
         patterns = self.pattern
         word_num = 0
         adding_num = 0
-        for pattern in patterns:
+        for pattern in patterns.pattern:
             if pattern[0] == "w":
                 word_num += pattern[1]
             else:
                 adding_num += pattern[1]
 
-        editing_space = math.comb(word_num , editing_num)
-        adding_space = pow(type_num , adding_num)
+        editing_space = math.comb(word_num, editing_num)
+        adding_space = pow(type_num, adding_num)
         pwd_space = editing_space * adding_space
 
         return pwd_space      
+    
+    class Patterns:
+        def __init__(self, pattern=None, rate=0):
+            if pattern is None:
+                pattern = []
+            self.pattern = pattern
+            self.rate = rate
 
 
 class Word:
-    def __init__(self , word = None , count = 0 ,sum = {}):
-        self.sum = {}
+    def __init__(self, word=None, count=0, sum=None):
+        if sum is None:
+            sum = {}
+        self.sum = sum
         self.word_counts = {}
         if word is not None:
             self.word_counts[word] = count
-            self.sum += count
+            self.sum[len(word)] = count
 
-    def addword(self, word , count = 0):
+    def addword(self, word, count=0):
+        wordlen = len(word)
         if word in self.word_counts:
             self.word_counts[word] += count            
-            self.sum[len(word)] += count
-        else:
-            self.word_counts[word] = count
-            wordlen = len(word)
-            if wordlen in self.sum :
+            if wordlen in self.sum:
                 self.sum[wordlen] += count
             else:
                 self.sum[wordlen] = count
-
-
+        else:
+            self.word_counts[word] = count
+            if wordlen in self.sum:
+                self.sum[wordlen] += count
+            else:
+                self.sum[wordlen] = count
     
     def getcount(self, word):
         # 获取字符串的出现次数
         return self.word_counts.get(word, 0)
 
-    def get_probability(self,word):
-        return self.getcount(word) / self.sum[len(word)]
+    def get_probability(self, word):
+        return self.getcount(word) / self.sum.get(len(word), 1)
 
     def updatecount(self, selected_word, new_count):
         # 更新字符串的出现次数
@@ -118,7 +128,7 @@ class Word:
             count = self.word_counts[selected_word]
             self.word_counts[selected_word] = new_count
             wordlen = len(selected_word)
-            self.sum[wordlen] = self.sum[wordlen] - count + new_count
+            self.sum[wordlen] = self.sum.get(wordlen, 0) - count + new_count
         else:
             raise ValueError(f"{selected_word} not found in word_counts.")
     
@@ -129,7 +139,7 @@ class Word:
         # 移除指定字符串
         if selected_word in self.word_counts:
             wordlen = len(selected_word)
-            self.sum[wordlen] -= self.word_counts[selected_word]
+            self.sum[wordlen] = self.sum.get(wordlen, 0) - self.word_counts[selected_word]
             del self.word_counts[selected_word]
         else:
             raise ValueError(f"{selected_word} not found in word_counts.")
@@ -138,18 +148,13 @@ class Word:
         with open(dictionary, "w", newline='') as output_file:
             csv_writer = csv.writer(output_file)
             for word, count in self.word_counts.items():
-                csv_writer.writerow([word, count , len(word)])
-        
+                csv_writer.writerow([word, count, len(word)])
 
-class Patterns:
-    def __init__(self , pattern = [] , rate = 0) -> None:
-        self.pattern = pattern
-        self.rate = rate
 
-def calculate_rate(password , word , pattern):
+def calculate_rate(password, word, pattern):
     rate = pattern.rate
-    for word in password.words:
-        rate *= words.get_probability(word)
+    for word_item in password.words:
+        rate *= word.get_probability(word_item)
     
     rate = rate / password.calculate_pwd_space()
 
@@ -161,14 +166,12 @@ def poisson_probability(m, lambda_):
 # Here is the test cases for the calculation
 
 if __name__ == "__main__":
-    input_pwd = Password("admin@123" , ["admin"] , [["w" , 5] , ["l" , 4 ]])
+    pattern = Password.Patterns([["w", 5], ["l", 4]], 0.4480985037406484)
+    input_pwd = Password("admin@123", ["admin"], pattern)
 
-    pattern = Patterns( [["w" , 5] , ["l" , 4 ]], 0.4480985037406484)
-
-    words = Word(None,0,51328)
-    words.addword("admin",1476)
-    rate = calculate_rate(input_pwd , words , pattern)
+    words = Word(None, 0, {5: 51328})
+    words.addword("admin", 1476)
+    rate = calculate_rate(input_pwd, words, pattern)
     print(rate)
-    total_rate = 1 - pow((1-rate) ,51328)
+    total_rate = 1 - pow((1 - rate), 51328)
     print(total_rate)
-
