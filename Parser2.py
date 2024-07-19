@@ -24,6 +24,9 @@ class Parser(object):
         self.init_replace_rules()
 
         self.word_corpus = []
+        self.word_freq = dict()
+        self._2gram_freq = dict()
+        self._3gram_freq = dict()
         self.str_corpus = []
         self.init_corpus()
 
@@ -64,6 +67,24 @@ class Parser(object):
                 self.word_freq[word] = float(freq)
                 st = file.readline()
         self.word_corpus = set(self.word_corpus)
+        with open('2grams_freq.csv', 'r') as file:
+            st = file.readline()
+            while st:
+                tmp = st.strip().split(',')
+                word = tuple(tmp[0].split(' '))
+                print(word)
+                freq = tmp[1]
+                self._2gram_freq[word] = float(freq)
+                st = file.readline()
+        with open('3grams_freq.csv', 'r') as file:
+            st = file.readline()
+            while st:
+                tmp = st.strip().split(',')
+                word = tuple(tmp[0].split(' '))
+                print(word)
+                freq = tmp[1]
+                self._2gram_freq[word] = float(freq)
+                st = file.readline()
     def replace_char(self, word : str) -> str:
         for i in range(len(word)):
             if word[i] in self.replace_rules:
@@ -171,7 +192,22 @@ class Parser(object):
     def get_str_probability(self, word):
         return 1
     def get_n_gram_probability(self, word_list):
-        return 1
+        if len(word_list) > 3:
+            return 0
+        if len(word_list) == 1:
+            if word_list[0] in self.word_freq.keys():
+
+                return self.word_freq[word_list[0]]
+            return 0
+        elif len(word_list) == 2:
+            if tuple(word_list) in self._2gram_freq.keys():
+                return self._2gram_freq[tuple(word_list)]
+            return 0
+        elif len(word_list) == 3:
+            if tuple(word_list) in self._3gram_freq.keys():
+                return self._3gram_freq[tuple(word_list)]
+            return 0
+        return 0
     def max_probability_division(self, word_list):
         if len(word_list) == 0:
             return 1
@@ -201,14 +237,21 @@ class Parser(object):
             return sum
 
         else:
-            return 1
-            # word_list = []
-            # for seg in segments:
-            #     if seg.type == SegType.WORD:
-            #         word_list.append(seg.matched_word)
-            #     elif seg.type == SegType.STRING:
-            #         sum *= self.get_str_probability(seg.matched_word)
-            # sum *= self.max_probability_division(word_list)
+            # return 1
+            word_list = []
+            for seg in segments:
+                if seg.type == SegType.WORD:
+                    word_list.append(seg.matched_word)
+                elif seg.type == SegType.STRING:
+                    sum *= self.get_str_probability(seg.matched_word)
+                elif seg.type == SegType.ALPHA:
+                    sum *= 1 / 52
+                elif seg.type == SegType.NUMBER:
+                    sum *= 1 / 10
+                elif seg.type == SegType.SPECIAL:
+                    sum *= 1 / 20
+            sum *= self.max_probability_division(word_list)
+            return sum
 
     def merge_segments(self, seg1 : PatternType, seg2 : PatternType):
         return PatternType(seg1.matched_word + seg2.matched_word, seg1.type, seg1.original_length + seg2.original_length, seg1.matched_length + seg2.matched_length)
@@ -216,7 +259,10 @@ class Parser(object):
         tmp_list = []
         for seg in segments:
             if seg.type == SegType.WORD or seg.type == SegType.STRING:
-                tmp_list.append(seg)
+                if seg.type == SegType.STRING:
+                    tmp_list.append(PatternType(seg.matched_word, SegType.WORD, seg.original_length, seg.matched_length))
+                else:
+                    tmp_list.append(seg)
             elif len(tmp_list) != 0 and tmp_list[-1].type == seg.type:
                 tmp_list[-1] = self.merge_segments(tmp_list[-1], seg)
             else:
@@ -273,12 +319,14 @@ class Parser(object):
         segments_list.sort(key=lambda x : x.value, reverse=True)
         segments_list = [node.segments for node in segments_list]
         ans_list = [(segments, self.calculate_probability(segments)) for segments in segments_list]
-        for segments, prob in ans_list:
-            print(prob, end = ' ')
-            tmp_list = self.process_segments(segments)
-            for seg in tmp_list:
-                print(seg, end = ' ')
-            print()
+        ans_list.sort(key=lambda x : x[1], reverse=True)
+        return self.process_segments(ans_list[0][0])
+        # for segments, prob in ans_list:
+        #     print(prob, end = ' ')
+        #     tmp_list = self.process_segments(segments)
+        #     for seg in tmp_list:
+        #         print(seg, end = ' ')
+        #     print()
         # for segments in segments_list:
         #     print(segments.value, end=' ')
         #     tmp_list = self.process_segments(segments.segments)
@@ -289,16 +337,17 @@ class Parser(object):
 
 if __name__ == '__main__':
     # test
-    s1 = '1a2b3c'
-    s2 = '4a53bc'
+    # s1 = '1a2b3c'
+    # s2 = '4a53bc'
     parser = Parser(match_type='complete', heuristic_type='square')
     # parser.fuzzy_match('I1lo')
 
-    password = 'I1love2dog'
-    password = 'Anyonebarks67'
-    password = input('Enter password: ')
-    patterns = parser.parse(password)
+    # password = 'I1love2dog'
+    # password = 'Anyonebarks67'
+    # password = input('Enter password: ')
+    # patterns = parser.parse(password)
     # for pattern in patterns:
     #     print(pattern)
+    with open
 
 # Anyonebarks67
