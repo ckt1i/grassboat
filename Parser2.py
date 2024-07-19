@@ -28,6 +28,7 @@ class Parser(object):
         self._2gram_freq = dict()
         self._3gram_freq = dict()
         self.str_corpus = []
+        self.str_freq = dict()
         self.init_corpus()
 
         self.match_type = match_type
@@ -67,23 +68,36 @@ class Parser(object):
                 self.word_freq[word] = float(freq)
                 st = file.readline()
         self.word_corpus = set(self.word_corpus)
+        with open('special_freq.csv', 'r', encoding='utf-8') as file:
+            st = file.readline()
+            while st:
+                tmp = st.strip().split(',')
+                word = tmp[0]
+                freq = tmp[1]
+                self.str_corpus.append(word)
+                self.str_freq[word] = float(freq)
+                st = file.readline()
+        self.word_corpus = set(self.word_corpus)
         with open('2grams_freq.csv', 'r') as file:
             st = file.readline()
             while st:
                 tmp = st.strip().split(',')
                 word = tuple(tmp[0].split(' '))
-                print(word)
+                # print(word)
                 freq = tmp[1]
                 self._2gram_freq[word] = float(freq)
                 st = file.readline()
         with open('3grams_freq.csv', 'r') as file:
             st = file.readline()
             while st:
+                if '\"' in st:
+                    st = file.readline()
+                    continue
                 tmp = st.strip().split(',')
                 word = tuple(tmp[0].split(' '))
-                print(word)
+                # print(st)
                 freq = tmp[1]
-                self._2gram_freq[word] = float(freq)
+                self._3gram_freq[word] = float(freq)
                 st = file.readline()
     def replace_char(self, word : str) -> str:
         for i in range(len(word)):
@@ -190,7 +204,7 @@ class Parser(object):
         return self.word_freq[word]
         # return 1
     def get_str_probability(self, word):
-        return 1
+        return self.str_freq[word] * 5e-2
     def get_n_gram_probability(self, word_list):
         if len(word_list) > 3:
             return 0
@@ -339,15 +353,16 @@ if __name__ == '__main__':
     # test
     # s1 = '1a2b3c'
     # s2 = '4a53bc'
-    parser = Parser(match_type='complete', heuristic_type='square')
+    parser = Parser(match_type='complete', heuristic_type='square', segment_type='extra')
+    print('111')
     # parser.fuzzy_match('I1lo')
 
     # password = 'I1love2dog'
     # password = 'Anyonebarks67'
-    # password = input('Enter password: ')
-    # patterns = parser.parse(password)
+    password = input('Enter password: ')
+    patterns = parser.parse(password)
     # for pattern in patterns:
     #     print(pattern)
-    with open
+    # with open
 
 # Anyonebarks67
